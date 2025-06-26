@@ -1,31 +1,69 @@
+
 <!DOCTYPE html>
 <html lang="en-us">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity WebGL Player | Oldman Rush</title>
+    <title>Unity Web Player | Brick Breaker</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
     <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=960 height=600></canvas>
+      <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
       <div id="unity-loading-bar">
         <div id="unity-logo"></div>
         <div id="unity-progress-bar-empty">
           <div id="unity-progress-bar-full"></div>
         </div>
       </div>
-      <div id="unity-mobile-warning">
-        WebGL builds are not supported on mobile devices.
-      </div>
+      <div id="unity-warning"></div>
       <div id="unity-footer">
-        <div id="unity-webgl-logo"></div>
+        <div id="unity-logo-title-footer"></div>
         <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">Oldman Rush</div>
+        <div id="unity-build-title">Brick Breaker</div>
       </div>
     </div>
     <script>
+      var canvas = document.querySelector("#unity-canvas");
+
+      // Bannerfunctie
+      function unityShowBanner(msg, type) {
+        var warningBanner = document.querySelector("#unity-warning");
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        }
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == 'error') div.style = 'background: red; padding: 10px;';
+        else {
+          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+          setTimeout(function() {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
+      }
+
+      // Mobile detectie
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        var meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+        document.getElementsByTagName('head')[0].appendChild(meta);
+        document.querySelector("#unity-container").className = "unity-mobile";
+        canvas.className = "unity-mobile";
+      } else {
+        canvas.style.width = "960px";
+        canvas.style.height = "600px";
+      }
+
+      document.querySelector("#unity-loading-bar").style.display = "block";
+
+      // Unity Build setup
       var buildUrl = "Build";
       var loaderUrl = buildUrl + "/oldmanrush.loader.js";
       var config = {
@@ -36,45 +74,50 @@
         companyName: "Highscore Gaming",
         productName: "Oldman Rush",
         productVersion: "0.2",
+       showBanner: unityShowBanner,
       };
+      
+      // Telegram data ophalen OF fallback voor testen
+      function getTelegramUserData() {
+        let testdata = "0;testuser;0;Test;User";
+        if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe) {
+          Telegram.WebApp.expand();
+          Telegram.WebApp.ready();
 
-      var container = document.querySelector("#unity-container");
-      var canvas = document.querySelector("#unity-canvas");
-      var loadingBar = document.querySelector("#unity-loading-bar");
-      var progressBarFull = document.querySelector("#unity-progress-bar-full");
-      var fullscreenButton = document.querySelector("#unity-fullscreen-button");
-      var mobileWarning = document.querySelector("#unity-mobile-warning");
-
-      // By default Unity keeps WebGL canvas render target size matched with
-      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
-      // Set this to false if you want to decouple this synchronization from
-      // happening inside the engine, and you would instead like to size up
-      // the canvas DOM size and WebGL render target sizes yourself.
-      // config.matchWebGLToCanvasSize = false;
-
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        container.className = "unity-mobile";
-        // Avoid draining fillrate performance on mobile devices,
-        // and default/override low DPI mode on mobile browsers.
-        config.devicePixelRatio = 1;
-        mobileWarning.style.display = "block";
-        setTimeout(() => {
-          mobileWarning.style.display = "none";
-        }, 5000);
-      } else {
-        canvas.style.width = "960px";
-        canvas.style.height = "600px";
+          const data = Telegram.WebApp.initDataUnsafe;
+          const telegramId = data?.user?.id || "";
+          const username = data?.user?.username || "";
+          const chatId = data?.chat?.id || "";
+          const firstName = data?.user?.first_name || "";
+          const lastName = data?.user?.last_name || "";
+          let userData = `${telegramId};${username};${chatId};${firstName};${lastName}`;
+          console.log("📦 [TELEGRAM] UserData:", userData);
+          return userData;
+        } else {
+          console.warn("⚠️ Niet in Telegram WebApp context! Gebruik testdata:", testdata);
+          return testdata;
+        }
       }
-      loadingBar.style.display = "block";
 
+      // Unity Loader
       var script = document.createElement("script");
       script.src = loaderUrl;
       script.onload = () => {
+        let userData = getTelegramUserData();
+
         createUnityInstance(canvas, config, (progress) => {
-          progressBarFull.style.width = 100 * progress + "%";
+          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
         }).then((unityInstance) => {
-          loadingBar.style.display = "none";
-          fullscreenButton.onclick = () => {
+          console.log("✅ Unity geladen. Stuur nu data naar TelegramParams:", userData);
+          try {
+            unityInstance.SendMessage("TelegramParams", "SetTelegramUserData", userData);
+            console.log("➡️ SendMessage verstuurd!");
+          } catch(e) {
+            console.error("❌ FOUT bij SendMessage:", e);
+          }
+
+          document.querySelector("#unity-loading-bar").style.display = "none";
+          document.querySelector("#unity-fullscreen-button").onclick = () => {
             unityInstance.SetFullscreen(1);
           };
         }).catch((message) => {
