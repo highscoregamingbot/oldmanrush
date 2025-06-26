@@ -2,13 +2,13 @@
 <html lang="en-us">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <title>Oldman Rush</title>
   <link rel="shortcut icon" href="TemplateData/favicon.ico">
   <link rel="stylesheet" href="TemplateData/style.css">
   <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
+    /* basis reset */
     html, body {
       margin: 0; padding: 0;
       width: 100%; height: 100%;
@@ -16,18 +16,27 @@
       background: #000;
       text-align: center;
     }
+
+    /* normale wrapper */
     #unity-container {
       position: relative;
       width: 100%;
       max-width: 960px;
       margin: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
+
+    /* klein canvas instart */
     #unity-canvas {
       width: 100%;
-      height: 300px;           /* klein begin */
+      height: 300px;
       transition: height 0.5s ease;
       background: #222;
     }
+
+    /* Play-knop */
     #play-button-container {
       margin: 10px auto;
     }
@@ -40,23 +49,36 @@
       color: #fff;
       cursor: pointer;
     }
-    /* Verberg Unity UI tot we fullscreen gaan */
+
+    /* hide Unity’s own UI vóór fullscreen */
     #unity-loading-bar,
     #unity-warning,
     #unity-footer {
       display: none;
     }
-    /* Fullscreen-wrapper */
+
+    /* fullscreen-wrapper */
     #unity-container.fullscreen {
       position: fixed;
       top: 0; left: 0;
-      width: 100%;  /* binnen de Telegram-webview */
-      height: 100%;
+      width: 100vw;
+      height: 100vh;
+      max-width: none;
       margin: 0;
       z-index: 9999;
+
+      /* letterbox/pillarbox centering */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
     }
+    /* canvas schaalt mee, nooit doorsnijden */
     #unity-container.fullscreen #unity-canvas {
-      height: 100%;   /* canvas vult de wrapper */
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
     }
   </style>
 </head>
@@ -82,13 +104,16 @@
   </div>
 
   <script>
+    // Zorg dat Telegram WebApp klaar is
+    Telegram.WebApp.ready();
+
     let unityInstanceGlobal = null;
     const canvas        = document.getElementById("unity-canvas");
     const container     = document.getElementById("unity-container");
     const playContainer = document.getElementById("play-button-container");
     const playButton    = document.getElementById("play-button");
 
-    // Banner-helper (keuze om te tonen of te verbergen)
+    // Unity-banner helper
     function unityShowBanner(msg, type) {
       const warningBanner = document.querySelector("#unity-warning");
       function update() {
@@ -97,42 +122,38 @@
       const div = document.createElement('div');
       div.innerHTML = msg;
       warningBanner.appendChild(div);
-      if (type === 'error')      div.style = 'background: red; padding: 10px;';
-      else if (type === 'warning') div.style = 'background: yellow; padding: 10px;';
+      if      (type === 'error')   div.style = 'background:red;padding:10px;';
+      else if (type === 'warning') div.style = 'background:yellow;padding:10px;';
       if (type !== 'error') {
-        setTimeout(() => {
-          warningBanner.removeChild(div);
-          update();
-        }, 5000);
+        setTimeout(() => { warningBanner.removeChild(div); update(); }, 5000);
       }
       update();
     }
 
-    // Unity build-configuratie
+    // Unity-build config
     const buildUrl  = "Build";
     const loaderUrl = buildUrl + "/oldmanrush.loader.js";
-    const config = {
-      dataUrl: buildUrl + "/oldmanrush.data",
-      frameworkUrl: buildUrl + "/oldmanrush.framework.js",
-      codeUrl: buildUrl + "/oldmanrush.wasm",
-      streamingAssetsUrl: "StreamingAssets",
-      companyName: "Highscore Gaming",
-      productName: "Oldman Rush",
-      productVersion: "0.2",
-      showBanner: unityShowBanner,
+    const config    = {
+      dataUrl:             buildUrl + "/oldmanrush.data",
+      frameworkUrl:        buildUrl + "/oldmanrush.framework.js",
+      codeUrl:             buildUrl + "/oldmanrush.wasm",
+      streamingAssetsUrl:  "StreamingAssets",
+      companyName:         "Highscore Gaming",
+      productName:         "Oldman Rush",
+      productVersion:      "0.2",
+      showBanner:          unityShowBanner,
     };
 
-    // Laad de Unity loader
+    // Unity loader script inject
     const script = document.createElement("script");
     script.src = loaderUrl;
     script.onload = () => {
       createUnityInstance(canvas, config, (progress) => {
         document.querySelector("#unity-progress-bar-full").style.width = (100 * progress) + "%";
       }).then((unityInstance) => {
-        // 1) Bewaar de instance
         unityInstanceGlobal = unityInstance;
 
-        // 2) Stuur Telegram-data naar Unity
+        // Telegram-data naar Unity sturen
         const init = Telegram.WebApp.initDataUnsafe || {};
         const data = [
           init.user?.id || "",
@@ -143,15 +164,15 @@
         ].join(";");
         unityInstance.SendMessage("TelegramParams", "SetTelegramUserData", data);
 
-        // 3) Activeer de Play-knop nu Unity geladen is
+        // Nu dat Unity geladen is, schakel Play-knop in
         playButton.disabled = false;
         playButton.addEventListener("click", () => {
-          // a) Maak wrapper fullscreen
+          // 1) Telegram-webview vergroten
+          Telegram.WebApp.expand();
+          // 2) wrapper op fullscreen-modus
           container.classList.add("fullscreen");
-          // b) Verberg Play-wrapper
+          // 3) wrapper-knop verbergen
           playContainer.style.display = "none";
-          // c) Zet Unity native fullscreen
-          unityInstanceGlobal.SetFullscreen(1);
         });
       }).catch(err => {
         console.error(err);
