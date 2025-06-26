@@ -1,130 +1,139 @@
-
 <!DOCTYPE html>
 <html lang="en-us">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity Web Player | Brick Breaker</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  </head>
-  <body>
-    <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
-      <div id="unity-loading-bar">
-        <div id="unity-logo"></div>
-        <div id="unity-progress-bar-empty">
-          <div id="unity-progress-bar-full"></div>
-        </div>
-      </div>
-      <div id="unity-warning"></div>
-      <div id="unity-footer">
-        <div id="unity-logo-title-footer"></div>
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">Brick Breaker</div>
+<head>
+  <meta charset="utf-8">
+  <title>Oldman Rush</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
+  <link rel="shortcut icon" href="TemplateData/favicon.ico">
+  <link rel="stylesheet" href="TemplateData/style.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    html, body {
+      width: 100vw; height: 100vh;
+      margin: 0; padding: 0;
+      background: #000;
+      overflow: hidden;
+    }
+    #unity-container {
+      width: 100vw; height: 100vh;
+      position: fixed; top: 0; left: 0;
+      background: #000;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #unity-canvas {
+      width: 100vw; height: 100vh;
+      background: #000;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div id="unity-container">
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="unity-loading-bar">
+      <div id="unity-logo"></div>
+      <div id="unity-progress-bar-empty">
+        <div id="unity-progress-bar-full"></div>
       </div>
     </div>
-    <script>
-      var canvas = document.querySelector("#unity-canvas");
-
-      // Bannerfunctie
-      function unityShowBanner(msg, type) {
-        var warningBanner = document.querySelector("#unity-warning");
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
-        }
-        var div = document.createElement('div');
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
-        }
-        updateBannerVisibility();
+    <div id="unity-warning"></div>
+    <div id="unity-footer">
+      <div id="unity-logo-title-footer"></div>
+      <div id="unity-fullscreen-button"></div>
+      <div id="unity-build-title">Oldman Rush</div>
+    </div>
+  </div>
+  <script>
+    // Bannerfunctie (ongewijzigd)
+    function unityShowBanner(msg, type) {
+      var warningBanner = document.querySelector("#unity-warning");
+      function updateBannerVisibility() {
+        warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
       }
+      var div = document.createElement('div');
+      div.innerHTML = msg;
+      warningBanner.appendChild(div);
+      if (type == 'error') div.style = 'background: red; padding: 10px;';
+      else {
+        if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+        setTimeout(function() {
+          warningBanner.removeChild(div);
+          updateBannerVisibility();
+        }, 5000);
+      }
+      updateBannerVisibility();
+    }
 
-      // Mobile detectie
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-        document.querySelector("#unity-container").className = "unity-mobile";
-        canvas.className = "unity-mobile";
+    // Responsive canvas
+    function resizeCanvas() {
+      let canvas = document.getElementById("unity-canvas");
+      canvas.style.width = window.innerWidth + "px";
+      canvas.style.height = window.innerHeight + "px";
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // Unity Build setup
+    var buildUrl = "Build";
+    var loaderUrl = buildUrl + "/oldmanrush.loader.js";
+    var config = {
+      dataUrl: buildUrl + "/oldmanrush.data",
+      frameworkUrl: buildUrl + "/oldmanrush.framework.js",
+      codeUrl: buildUrl + "/oldmanrush.wasm",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "Highscore Gaming",
+      productName: "Oldman Rush",
+      productVersion: "0.2",
+      showBanner: unityShowBanner,
+    };
+
+    // Telegram data ophalen OF fallback voor testen
+    function getTelegramUserData() {
+      let testdata = "0;testuser;0;Test;User";
+      if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe) {
+        Telegram.WebApp.expand();
+        Telegram.WebApp.ready();
+        const data = Telegram.WebApp.initDataUnsafe;
+        const telegramId = data?.user?.id || "";
+        const username = data?.user?.username || "";
+        const chatId = data?.chat?.id || "";
+        const firstName = data?.user?.first_name || "";
+        const lastName = data?.user?.last_name || "";
+        let userData = `${telegramId};${username};${chatId};${firstName};${lastName}`;
+        console.log("📦 [TELEGRAM] UserData:", userData);
+        return userData;
       } else {
-        canvas.style.width = "960px";
-        canvas.style.height = "600px";
+        console.warn("⚠️ Niet in Telegram WebApp context! Gebruik testdata:", testdata);
+        return testdata;
       }
+    }
 
-      document.querySelector("#unity-loading-bar").style.display = "block";
+    // Unity Loader
+    var script = document.createElement("script");
+    script.src = loaderUrl;
+    script.onload = () => {
+      let userData = getTelegramUserData();
 
-      // Unity Build setup
-      var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/oldmanrush.loader.js";
-      var config = {
-        dataUrl: buildUrl + "/oldmanrush.data",
-        frameworkUrl: buildUrl + "/oldmanrush.framework.js",
-        codeUrl: buildUrl + "/oldmanrush.wasm",
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "Highscore Gaming",
-        productName: "Oldman Rush",
-        productVersion: "0.2",
-       showBanner: unityShowBanner,
-      };
-      
-      // Telegram data ophalen OF fallback voor testen
-      function getTelegramUserData() {
-        let testdata = "0;testuser;0;Test;User";
-        if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe) {
-          Telegram.WebApp.expand();
-          Telegram.WebApp.ready();
-
-          const data = Telegram.WebApp.initDataUnsafe;
-          const telegramId = data?.user?.id || "";
-          const username = data?.user?.username || "";
-          const chatId = data?.chat?.id || "";
-          const firstName = data?.user?.first_name || "";
-          const lastName = data?.user?.last_name || "";
-          let userData = `${telegramId};${username};${chatId};${firstName};${lastName}`;
-          console.log("📦 [TELEGRAM] UserData:", userData);
-          return userData;
-        } else {
-          console.warn("⚠️ Niet in Telegram WebApp context! Gebruik testdata:", testdata);
-          return testdata;
+      createUnityInstance(document.getElementById("unity-canvas"), config, (progress) => {
+        document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+      }).then((unityInstance) => {
+        resizeCanvas(); // zorgt voor 100vw/100vh
+        console.log("✅ Unity geladen. Stuur nu data naar TelegramParams:", userData);
+        try {
+          unityInstance.SendMessage("TelegramParams", "SetTelegramUserData", userData);
+          console.log("➡️ SendMessage verstuurd!");
+        } catch(e) {
+          console.error("❌ FOUT bij SendMessage:", e);
         }
-      }
 
-      // Unity Loader
-      var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        let userData = getTelegramUserData();
-
-        createUnityInstance(canvas, config, (progress) => {
-          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-        }).then((unityInstance) => {
-          console.log("✅ Unity geladen. Stuur nu data naar TelegramParams:", userData);
-          try {
-            unityInstance.SendMessage("TelegramParams", "SetTelegramUserData", userData);
-            console.log("➡️ SendMessage verstuurd!");
-          } catch(e) {
-            console.error("❌ FOUT bij SendMessage:", e);
-          }
-
-          document.querySelector("#unity-loading-bar").style.display = "none";
-          document.querySelector("#unity-fullscreen-button").onclick = () => {
-            unityInstance.SetFullscreen(1);
-          };
-        }).catch((message) => {
-          alert(message);
-        });
-      };
-      document.body.appendChild(script);
-    </script>
-  </body>
+        document.querySelector("#unity-loading-bar").style.display = "none";
+        document.querySelector("#unity-fullscreen-button").onclick = () => {
+          unityInstance.SetFullscreen(1);
+        };
+      }).catch((message) => {
+        alert(message);
+      });
+    };
+    document.body.appendChild(script);
+  </script>
+</body>
 </html>
