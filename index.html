@@ -16,8 +16,6 @@
       background: #000;
       text-align: center;
     }
-
-    /* container en canvas initialisatie */
     #unity-container {
       position: relative;
       width: 100%;
@@ -26,12 +24,10 @@
     }
     #unity-canvas {
       width: 100%;
-      height: 300px;         /* klein begin */
+      height: 300px;           /* klein begin */
       transition: height 0.5s ease;
       background: #222;
     }
-
-    /* Play-knop */
     #play-button-container {
       margin: 10px auto;
     }
@@ -44,26 +40,23 @@
       color: #fff;
       cursor: pointer;
     }
-
-    /* verberg Unity UI tot fullscreen */
+    /* Verberg Unity UI tot we fullscreen gaan */
     #unity-loading-bar,
     #unity-warning,
     #unity-footer {
       display: none;
     }
-
-    /* FULLSCREEN wrapper */
+    /* Fullscreen-wrapper */
     #unity-container.fullscreen {
       position: fixed;
       top: 0; left: 0;
-      width: 100%;    /* binnen Telegram-webview */
+      width: 100%;  /* binnen de Telegram-webview */
       height: 100%;
       margin: 0;
       z-index: 9999;
     }
-    #unity-container.fullscreen canvas {
-      width: 100%;
-      height: 100%;
+    #unity-container.fullscreen #unity-canvas {
+      height: 100%;   /* canvas vult de wrapper */
     }
   </style>
 </head>
@@ -85,12 +78,17 @@
   </div>
 
   <div id="play-button-container">
-    <button id="play-button">Play Game</button>
+    <button id="play-button" disabled>Play Game</button>
   </div>
 
   <script>
     let unityInstanceGlobal = null;
+    const canvas        = document.getElementById("unity-canvas");
+    const container     = document.getElementById("unity-container");
+    const playContainer = document.getElementById("play-button-container");
+    const playButton    = document.getElementById("play-button");
 
+    // Banner-helper (keuze om te tonen of te verbergen)
     function unityShowBanner(msg, type) {
       const warningBanner = document.querySelector("#unity-warning");
       function update() {
@@ -99,9 +97,9 @@
       const div = document.createElement('div');
       div.innerHTML = msg;
       warningBanner.appendChild(div);
-      if (type === 'error') div.style = 'background: red; padding: 10px;';
-      else {
-        if (type === 'warning') div.style = 'background: yellow; padding: 10px;';
+      if (type === 'error')      div.style = 'background: red; padding: 10px;';
+      else if (type === 'warning') div.style = 'background: yellow; padding: 10px;';
+      if (type !== 'error') {
         setTimeout(() => {
           warningBanner.removeChild(div);
           update();
@@ -110,9 +108,10 @@
       update();
     }
 
+    // Unity build-configuratie
     const buildUrl  = "Build";
     const loaderUrl = buildUrl + "/oldmanrush.loader.js";
-    const config    = {
+    const config = {
       dataUrl: buildUrl + "/oldmanrush.data",
       frameworkUrl: buildUrl + "/oldmanrush.framework.js",
       codeUrl: buildUrl + "/oldmanrush.wasm",
@@ -123,27 +122,17 @@
       showBanner: unityShowBanner,
     };
 
-    const canvas        = document.getElementById("unity-canvas");
-    const container     = document.getElementById("unity-container");
-    const playContainer = document.getElementById("play-button-container");
-    const playButton    = document.getElementById("play-button");
-
-    // Stap 1: Play button klikt -> canvas groeit naar normale hoogte
-    playButton.addEventListener("click", () => {
-      canvas.style.height = "600px";
-      playContainer.style.display = "none";
-    });
-
-    // Unity loader insluiten
+    // Laad de Unity loader
     const script = document.createElement("script");
     script.src = loaderUrl;
     script.onload = () => {
       createUnityInstance(canvas, config, (progress) => {
-        document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+        document.querySelector("#unity-progress-bar-full").style.width = (100 * progress) + "%";
       }).then((unityInstance) => {
+        // 1) Bewaar de instance
         unityInstanceGlobal = unityInstance;
 
-        // Telegram-data doorsturen naar Unity
+        // 2) Stuur Telegram-data naar Unity
         const init = Telegram.WebApp.initDataUnsafe || {};
         const data = [
           init.user?.id || "",
@@ -154,13 +143,16 @@
         ].join(";");
         unityInstance.SendMessage("TelegramParams", "SetTelegramUserData", data);
 
-        // Stap 2: eerste tap in canvas -> fullscreen wrapper + Unity fullscreen
-        canvas.addEventListener("pointerdown", function goFull() {
+        // 3) Activeer de Play-knop nu Unity geladen is
+        playButton.disabled = false;
+        playButton.addEventListener("click", () => {
+          // a) Maak wrapper fullscreen
           container.classList.add("fullscreen");
+          // b) Verberg Play-wrapper
+          playContainer.style.display = "none";
+          // c) Zet Unity native fullscreen
           unityInstanceGlobal.SetFullscreen(1);
-          canvas.removeEventListener("pointerdown", goFull);
-        }, { once: true });
-
+        });
       }).catch(err => {
         console.error(err);
         alert(err);
