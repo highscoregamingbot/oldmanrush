@@ -2,181 +2,133 @@
 <html lang="en-us">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <title>Oldman Rush</title>
   <link rel="shortcut icon" href="TemplateData/favicon.ico">
   <link rel="stylesheet" href="TemplateData/style.css">
   <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    /* basis reset */
     html, body {
-      margin: 0; padding: 0;
-      width: 100%; height: 100%;
-      overflow: hidden;
-      background: #000;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
       text-align: center;
+      background: #000;
     }
 
-    /* normale wrapper */
     #unity-container {
       position: relative;
       width: 100%;
       max-width: 960px;
+      height: 300px;
       margin: auto;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      transition: all 0.5s ease;
     }
 
-    /* klein canvas instart */
+    #unity-container.fullscreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      margin: 0;
+      z-index: 9999;
+    }
+
     #unity-canvas {
       width: 100%;
-      height: 300px;
-      transition: height 0.5s ease;
+      height: 100%;
       background: #222;
     }
 
-    /* Play-knop */
+    /* Hide play button until Unity is ready */
     #play-button-container {
-      margin: 10px auto;
+      margin-top: 10px;
+      display: none;
     }
+
     #play-button {
       padding: 12px 24px;
       font-size: 18px;
-      border: none;
-      border-radius: 8px;
-      background-color: #007AFF;
-      color: #fff;
       cursor: pointer;
+      border-radius: 8px;
+      border: none;
+      background-color: #007AFF;
+      color: white;
     }
 
-    /* hide Unity’s own UI vóór fullscreen */
+    #play-button:disabled {
+      background-color: #555;
+      cursor: not-allowed;
+    }
+
     #unity-loading-bar,
     #unity-warning,
     #unity-footer {
       display: none;
-    }
-
-    /* fullscreen-wrapper */
-    #unity-container.fullscreen {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw;
-      height: 100vh;
-      max-width: none;
-      margin: 0;
-      z-index: 9999;
-
-      /* letterbox/pillarbox centering */
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #000;
-    }
-    /* canvas schaalt mee, nooit doorsnijden */
-    #unity-container.fullscreen #unity-canvas {
-      width: auto;
-      height: auto;
-      max-width: 100%;
-      max-height: 100%;
     }
   </style>
 </head>
 <body>
   <div id="unity-container">
     <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
-    <div id="unity-loading-bar">
-      <div id="unity-logo"></div>
-      <div id="unity-progress-bar-empty">
-        <div id="unity-progress-bar-full"></div>
-      </div>
-    </div>
-    <div id="unity-warning"></div>
-    <div id="unity-footer">
-      <div id="unity-logo-title-footer"></div>
-      <div id="unity-fullscreen-button"></div>
-      <div id="unity-build-title">Oldman Rush</div>
-    </div>
   </div>
 
   <div id="play-button-container">
-    <button id="play-button" disabled>Play Game</button>
+    <button id="play-button" disabled>Play</button>
   </div>
 
   <script>
-    // Zorg dat Telegram WebApp klaar is
-    Telegram.WebApp.ready();
+    var container = document.getElementById('unity-container');
+    var canvas = document.getElementById('unity-canvas'); // Ensure canvas is defined
+    var playButton = document.getElementById('play-button');
+    var playContainer = document.getElementById('play-button-container');
 
-    let unityInstanceGlobal = null;
-    const canvas        = document.getElementById("unity-canvas");
-    const container     = document.getElementById("unity-container");
-    const playContainer = document.getElementById("play-button-container");
-    const playButton    = document.getElementById("play-button");
-
-    // Unity-banner helper
-    function unityShowBanner(msg, type) {
-      const warningBanner = document.querySelector("#unity-warning");
-      function update() {
-        warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+    // Unity loader config
+    var buildUrl = 'Build';
+    var loaderUrl = buildUrl + '/oldmanrush.loader.js';
+    var config = {
+      dataUrl: buildUrl + '/oldmanrush.data',
+      frameworkUrl: buildUrl + '/oldmanrush.framework.js',
+      codeUrl: buildUrl + '/oldmanrush.wasm',
+      streamingAssetsUrl: 'StreamingAssets',
+      companyName: 'Highscore Gaming',
+      productName: 'Maze',
+      productVersion: '0.1',
+      showBanner: function(msg, type) {
+        console.log(type + ': ' + msg);
       }
-      const div = document.createElement('div');
-      div.innerHTML = msg;
-      warningBanner.appendChild(div);
-      if      (type === 'error')   div.style = 'background:red;padding:10px;';
-      else if (type === 'warning') div.style = 'background:yellow;padding:10px;';
-      if (type !== 'error') {
-        setTimeout(() => { warningBanner.removeChild(div); update(); }, 5000);
-      }
-      update();
-    }
-
-    // Unity-build config
-    const buildUrl  = "Build";
-    const loaderUrl = buildUrl + "/oldmanrush.loader.js";
-    const config    = {
-      dataUrl:             buildUrl + "/oldmanrush.data",
-      frameworkUrl:        buildUrl + "/oldmanrush.framework.js",
-      codeUrl:             buildUrl + "/oldmanrush.wasm",
-      streamingAssetsUrl:  "StreamingAssets",
-      companyName:         "Highscore Gaming",
-      productName:         "Oldman Rush",
-      productVersion:      "0.2",
-      showBanner:          unityShowBanner,
     };
 
-    // Unity loader script inject
-    const script = document.createElement("script");
+    // Load Unity loader script
+    var script = document.createElement('script');
     script.src = loaderUrl;
-    script.onload = () => {
-      createUnityInstance(canvas, config, (progress) => {
-        document.querySelector("#unity-progress-bar-full").style.width = (100 * progress) + "%";
-      }).then((unityInstance) => {
-        unityInstanceGlobal = unityInstance;
-
-        // Telegram-data naar Unity sturen
-        const init = Telegram.WebApp.initDataUnsafe || {};
-        const data = [
-          init.user?.id || "",
-          init.user?.username || "",
-          init.chat?.id || "",
-          init.user?.first_name || "",
-          init.user?.last_name || ""
-        ].join(";");
-        unityInstance.SendMessage("TelegramParams", "SetTelegramUserData", data);
-
-        // Nu dat Unity geladen is, schakel Play-knop in
+    script.onload = function() {
+      createUnityInstance(canvas, config).then(function(unityInstance) {
+        // Unity is loaded, show and enable play button
+        playContainer.style.display = 'block';
         playButton.disabled = false;
-        playButton.addEventListener("click", () => {
-          // 1) Telegram-webview vergroten
-          Telegram.WebApp.expand();
-          // 2) wrapper op fullscreen-modus
-          container.classList.add("fullscreen");
-          // 3) wrapper-knop verbergen
-          playContainer.style.display = "none";
+
+        // On click, fullscreen and start game
+        playButton.addEventListener('click', function () {
+          container.classList.add('fullscreen');
+          playContainer.style.display = 'none';
+          // Optionally send Telegram data
+          var initData = Telegram.WebApp.initDataUnsafe || {};
+          var unityData = [
+            initData.user?.id || '',
+            initData.user?.username || '',
+            initData.chat?.id || '',
+            initData.user?.first_name || '',
+            initData.user?.last_name || ''
+          ].join(';');
+          unityInstance.SendMessage('TelegramParams', 'SetTelegramUserData', unityData);
         });
-      }).catch(err => {
-        console.error(err);
-        alert(err);
+      }).catch(function(e) {
+        alert('Unity loading failed: ' + e);
       });
     };
     document.body.appendChild(script);
