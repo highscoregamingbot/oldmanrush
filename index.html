@@ -6,10 +6,28 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     body { background: #000; color: #fff; text-align: center; }
-    #unity-container { margin: auto; width: 100%; max-width: 960px; height: 300px; }
+    #unity-container {
+      margin: auto;
+      width: 100%;
+      max-width: 960px;
+      height: 300px;
+    }
     #play-button-container { margin-top: 10px; display: none; }
     #play-button { padding: 12px 24px; font-size: 18px; border-radius: 8px; border: none; background: #007AFF; color: #fff; }
     #loading-msg { margin-top: 40px; }
+    #unity-container.fullscreen, #unity-canvas.fullscreen {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: none;
+      margin: 0;
+      z-index: 9999;
+      background: #111;
+    }
+    #unity-canvas.fullscreen {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -20,18 +38,20 @@
     <button id="play-button" disabled>Play</button>
   </div>
   <div id="loading-msg">Game wordt voorbereid...</div>
-
 <script>
 let telegramReady = false;
 let unityReady = false;
 let unityInstance = null;
 let userData = "";
+const canvas = document.getElementById('unity-canvas');
+const playButton = document.getElementById('play-button');
+const playContainer = document.getElementById('play-button-container');
 
 function checkStartReady() {
     // Activeer de play-knop alleen als Telegram info en Unity klaar zijn
     if (telegramReady && unityReady) {
-        document.getElementById("play-button-container").style.display = 'block';
-        document.getElementById("play-button").disabled = false;
+        playContainer.style.display = 'block';
+        playButton.disabled = false;
         document.getElementById("loading-msg").style.display = 'none';
     }
 }
@@ -73,7 +93,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var script = document.createElement('script');
     script.src = loaderUrl;
     script.onload = function() {
-        createUnityInstance(document.getElementById('unity-canvas'), config).then(function(instance) {
+        createUnityInstance(canvas, config).then(function(instance) {
             unityInstance = instance;
             unityReady = true;
             checkStartReady();
@@ -83,9 +103,13 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // 3. Wanneer gebruiker op Play drukt: stuur data & fullscreen
-document.getElementById('play-button').addEventListener('click', function() {
+playButton.addEventListener('click', function() {
     document.getElementById('unity-container').classList.add('fullscreen');
-    document.getElementById('play-button-container').style.display = 'none';
+    canvas.classList.add('fullscreen');
+    playContainer.style.display = 'none';
+    // Pas de grootte van de canvas aan het scherm aan
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
     // Telegram user data naar Unity sturen
     if (unityInstance && userData) {
         unityInstance.SendMessage('TelegramParams', 'SetTelegramUserData', userData);
