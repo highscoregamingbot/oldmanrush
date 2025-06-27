@@ -26,7 +26,9 @@
 
       #unity-canvas {
         width: 100%;
-        height: 300px; /* Start kleiner */
+        height: 300px;
+        max-width: 100vw;
+        max-height: 100vh;
         transition: height 0.5s ease;
         background: #222;
       }
@@ -96,9 +98,14 @@
       };
 
       document.getElementById("play-button").addEventListener("click", function () {
-        canvas.style.height = "600px"; // Normale hoogte
+        // Volledig beeld, maar niet te groot!
+        canvas.style.width = "100vw";
+        canvas.style.height = "100vh";
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
         document.getElementById("play-button-container").style.display = "none";
       });
+
 
       var script = document.createElement("script");
       script.src = loaderUrl;
