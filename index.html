@@ -93,10 +93,11 @@ document.addEventListener("DOMContentLoaded", function () {
     var script = document.createElement('script');
     script.src = loaderUrl;
     script.onload = function() {
-        createUnityInstance(canvas, config).then(function(instance) {
-            unityInstance = instance;
-            unityReady = true;
-            checkStartReady();
+        $1
+            // SCORE FIX: Stuur Telegram user data direct na laden!
+            if (userData) {
+                unityInstance.SendMessage('TelegramParams', 'SetTelegramUserData', userData);
+            }
         });
     };
     document.body.appendChild(script);
