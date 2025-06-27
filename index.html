@@ -1,121 +1,126 @@
+
 <!DOCTYPE html>
 <html lang="en-us">
-<head>
-  <meta charset="utf-8">
-  <title>Oldman Rush</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    body { background: #000; color: #fff; text-align: center; }
-    #unity-container {
-      margin: auto;
-      width: 100%;
-      max-width: 960px;
-      height: 300px;
-    }
-    #play-button-container { margin-top: 10px; display: none; }
-    #play-button { padding: 12px 24px; font-size: 18px; border-radius: 8px; border: none; background: #007AFF; color: #fff; }
-    #loading-msg { margin-top: 40px; }
-    #unity-container.fullscreen, #unity-canvas.fullscreen {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw !important;
-      height: 100vh !important;
-      max-width: none;
-      margin: 0;
-      z-index: 9999;
-      background: #111;
-    }
-    #unity-canvas.fullscreen {
-      display: block;
-    }
-  </style>
-</head>
-<body>
-  <div id="unity-container">
-    <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
-  </div>
-  <div id="play-button-container">
-    <button id="play-button" disabled>Play</button>
-  </div>
-  <div id="loading-msg">Game wordt voorbereid...</div>
-<script>
-let telegramReady = false;
-let unityReady = false;
-let unityInstance = null;
-let userData = "";
-const canvas = document.getElementById('unity-canvas');
-const playButton = document.getElementById('play-button');
-const playContainer = document.getElementById('play-button-container');
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Oldman Rush</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        text-align: center;
+        background: #000;
+      }
 
-function checkStartReady() {
-    // Activeer de play-knop alleen als Telegram info en Unity klaar zijn
-    if (telegramReady && unityReady) {
-        playContainer.style.display = 'block';
-        playButton.disabled = false;
-        document.getElementById("loading-msg").style.display = 'none';
-    }
-}
+      #unity-container {
+        position: relative;
+        width: 100%;
+        max-width: 960px;
+        margin: auto;
+      }
 
-// 1. Haal Telegram info op zodra pagina laadt
-document.addEventListener("DOMContentLoaded", function () {
-    let tg = window.Telegram && window.Telegram.WebApp;
-    if (!tg || !tg.initDataUnsafe || !tg.initDataUnsafe.user) {
-        document.getElementById("loading-msg").innerText = "Open deze game via Telegram!";
-        return;
-    }
+      #unity-canvas {
+        width: 100%;
+        height: 300px; /* Start kleiner */
+        transition: height 0.5s ease;
+        background: #222;
+      }
 
-    // Bouw user data string
-    let initData = tg.initDataUnsafe;
-    userData = [
-        initData.user?.id || '',
-        initData.user?.username || '',
-        initData.chat?.id || '',
-        initData.user?.first_name || '',
-        initData.user?.last_name || ''
-    ].join(';');
-    telegramReady = true;
-    checkStartReady();
+      #play-button-container {
+        margin-top: 10px;
+      }
 
-    // 2. Laad Unity loader script pas als Telegram info binnen is!
-    var buildUrl = 'Build';
-    var loaderUrl = buildUrl + '/oldmanrush.loader.js';
-    var config = {
-        dataUrl: buildUrl + '/oldmanrush.data',
-        frameworkUrl: buildUrl + '/oldmanrush.framework.js',
-        codeUrl: buildUrl + '/oldmanrush.wasm',
-        streamingAssetsUrl: 'StreamingAssets',
-        companyName: 'Highscore Gaming',
-        productName: 'Maze',
-        productVersion: '0.1',
-        showBanner: function(msg, type) { console.log(type + ': ' + msg); }
-    };
+      #play-button {
+        padding: 12px 24px;
+        font-size: 18px;
+        cursor: pointer;
+        border-radius: 8px;
+        border: none;
+        background-color: #007AFF;
+        color: white;
+      }
 
-    var script = document.createElement('script');
-    script.src = loaderUrl;
-    script.onload = function() {
-        $1
-            // SCORE FIX: Stuur Telegram user data direct na laden!
-            if (userData) {
-                unityInstance.SendMessage('TelegramParams', 'SetTelegramUserData', userData);
-            }
+      #unity-loading-bar, #unity-warning, #unity-footer {
+        display: none; /* Optioneel: weghalen of zichtbaar maken na Play */
+      }
+    </style>
+  </head>
+  <body>
+    <div id="unity-container">
+      <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
+    </div>
+
+    <!-- Play knop onder het canvas -->
+    <div id="play-button-container">
+      <button id="play-button">Play</button>
+    </div>
+
+    <script>
+      var canvas = document.querySelector("#unity-canvas");
+
+      function unityShowBanner(msg, type) {
+        var warningBanner = document.querySelector("#unity-warning");
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        }
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == 'error') div.style = 'background: red; padding: 10px;';
+        else {
+          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+          setTimeout(function () {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
+      }
+
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/oldmanrush.loader.js";
+      var config = {
+        dataUrl: buildUrl + "/oldmanrush.data",
+        frameworkUrl: buildUrl + "/oldmanrush.framework.js",
+        codeUrl: buildUrl + "/oldmanrush.wasm",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "Highscore Gaming",
+        productName: "Maze",
+        productVersion: "0.1",
+        showBanner: unityShowBanner,
+      };
+
+      document.getElementById("play-button").addEventListener("click", function () {
+        canvas.style.height = "600px"; // Normale hoogte
+        document.getElementById("play-button-container").style.display = "none";
+      });
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+          // Optional: load bar visuals
+        }).then((unityInstance) => {
+          const initData = Telegram.WebApp.initDataUnsafe || {};
+          const telegramId = initData.user?.id || "";
+          const username = initData.user?.username || "";
+          const chatId = initData.chat?.id || "";
+          const firstName = initData.user?.first_name || "";
+          const lastName = initData.user?.last_name || "";
+
+          const unityData = `${telegramId};${username};${chatId};${firstName};${lastName}`;
+          console.log("[Telegram] Sending to Unity:", unityData);
+          unityInstance.SendMessage("TelegramParams", "SetTelegramUserData", unityData);
+        }).catch((message) => {
+          alert(message);
         });
-    };
-    document.body.appendChild(script);
-});
-
-// 3. Wanneer gebruiker op Play drukt: stuur data & fullscreen
-playButton.addEventListener('click', function() {
-    document.getElementById('unity-container').classList.add('fullscreen');
-    canvas.classList.add('fullscreen');
-    playContainer.style.display = 'none';
-    // Pas de grootte van de canvas aan het scherm aan
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    // Telegram user data naar Unity sturen
-    if (unityInstance && userData) {
-        unityInstance.SendMessage('TelegramParams', 'SetTelegramUserData', userData);
-    }
-});
-</script>
-</body>
+      };
+      document.body.appendChild(script);
+    </script>
+  </body>
 </html>
